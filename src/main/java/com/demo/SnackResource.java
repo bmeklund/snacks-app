@@ -13,6 +13,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
+import org.jboss.logging.Logger;
 
 import io.quarkus.panache.common.Sort;
 
@@ -22,8 +23,12 @@ import io.quarkus.panache.common.Sort;
 @Consumes("application/json")
 public class SnackResource {
 
+    private static final Logger LOG = Logger.getLogger(SnackResource.class);
+
+
     @GET
     public List<Snack> get() {
+        LOG.info("Listing existing snacks");
         return Snack.listAll(Sort.by("name"));
     }
 
@@ -43,7 +48,7 @@ public class SnackResource {
         if (snack.id != null) {
             throw new WebApplicationException("Id was invalidly set on request.", 422);
         }
-
+        LOG.info("Storing a new snack: " + snack.name);
         snack.persist();
         return Response.ok(snack).status(201).build();
     }
@@ -75,6 +80,7 @@ public class SnackResource {
         if (entity == null) {
             throw new WebApplicationException("Snaack with id of " + id + " does not exist.", 404);
         }
+        LOG.info("DELETING A snack with id:" + id);
         entity.delete();
         return Response.status(204).build();
     }
