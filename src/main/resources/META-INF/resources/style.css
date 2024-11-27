@@ -1,6 +1,7 @@
 .flex-head {
     display: flex;
     text-align: center;
+    margin-bottom: 3rem;
 }
 .flex-container {
     display: flex;
@@ -9,9 +10,52 @@
     flex: 1;
 }  
 .flex-child:first-child {
-    margin-right: 20px;
+    margin-right: 1rem;
 } 
 .h1-center {
     display: flex;
     justify-content: center;
+    margin-bottom: 1rem;
+    margin-top: 0rem;
+}
+
+.text-slate-50 {
+    --tw-text-opacity: 1;
+    color: rgb(248 250 252 / var(--tw-text-opacity));
+  }
+
+.font-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+  
+.text-4xl {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+}
+
+.underline {
+    text-decoration-line: underline;
+}
+
+.py-12 {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+.text-4xl {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+}
+
+.bg-gradient-to-right {
+    background-image: linear-gradient(to right,#590d9b,#24062b);
+}
+
+.bg-gradient-to-right-child{
+    background-image: linear-gradient(to right,#590d9b,#3f0a67);
+}
+
+.py-24 {
+    padding-top: 6rem;
+    padding-bottom: 3rem;
 }

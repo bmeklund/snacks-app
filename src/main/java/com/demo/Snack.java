@@ -6,8 +6,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.SequenceGenerator;
-
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 @Entity
@@ -15,12 +13,7 @@ import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 public class Snack extends PanacheEntityBase {
 
     @Id
-    @SequenceGenerator(
-            name = "snackSequence",
-            sequenceName = "snack_id_seq",
-            allocationSize = 1,
-            initialValue = 4)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "snackSequence")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
     @Column(length = 40, unique = true)
