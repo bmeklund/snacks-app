@@ -1,6 +1,7 @@
-FROM mysql:8.0
+FROM registry.redhat.io/rhel8/mysql-80
 
-RUN chown -R mysql:root /var/lib/mysql/
+ENV APP_DATA=/opt/app-root/src
+ENV HOME=/var/lib/mysql
 
 ENV MYSQL_DATABASE=snackdb
 ENV MYSQL_USER=myuser
@@ -9,9 +10,9 @@ ENV MYSQL_ROOT_PASSWORD=someroot
 
 COPY import.sql /etc/mysql/import.sql
 
-RUN sed -i 's/MYSQL_DATABASE/'$MYSQL_DATABASE'/g' /etc/mysql/import.sql
-RUN cp /etc/mysql/import.sql /docker-entrypoint-initdb.d
-
 USER 27
 
 EXPOSE 3306
+
+ENTRYPOINT ["container-entrypoint"]
+CMD ["run-mysqld", "--init-file=/etc/mysql/import.sql"]
