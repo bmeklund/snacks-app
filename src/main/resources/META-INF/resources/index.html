@@ -61,12 +61,12 @@
           if ($scope.form.id == -1) {
             //Id is absent so add snacks - POST operation
             method = "POST";
-            url = '/entity/snacks';
+            url = 'entity/snacks';
             data.name = $scope.form.name;
           } else {
             //If Id is present, it's edit operation - PUT operation
             method = "PUT";
-            url = '/entity/snacks/' + $scope.form.id;
+            url = 'entity/snacks/' + $scope.form.id;
             data.name = $scope.form.name;
           }
 
@@ -84,7 +84,7 @@
         $scope.remove = function (snack) {
           $http({
             method: 'DELETE',
-            url: '/entity/snacks/' + snack.id
+            url: 'entity/snacks/' + snack.id
           }).then(_success, _error);
         };
 
@@ -99,7 +99,7 @@
         function _refreshPageData() {
           $http({
             method: 'GET',
-            url: '/entity/snacks'
+            url: 'entity/snacks'
           }).then(function successCallback(response) {
             $scope.snacks = response.data;
           }, function errorCallback(response) {
@@ -149,7 +149,7 @@
     </div>
     <div class="flex-child">
       <div class="picture">
-        <img src="plushie-zen.png" alt="podmanimg" style='width: 100%; height: auto; object-fit: contain' />
+        <img src="plushie-zen.png" alt="podmanimg" style='display: block; width: 100%; height: auto; object-fit: contain' />
       </div>
     </div>
     
