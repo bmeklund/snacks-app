@@ -1,0 +1,222 @@
+schemaVersion: 2.2.0
+metadata:
+  name: quarkus-devservices-mysql
+  displayName: Quarkus Dev Services (MySQL) on Dev Spaces
+  description: >-
+    Quarkus dev mode with Dev Services / Testcontainers MySQL, backed by the
+    workspace's own rootless Podman (nested containers).
+
+# One PVC per workspace, so the Maven cache and Podman image layers live on
+# persistent storage instead of the pod's ephemeral filesystem. This is what
+# keeps a large MySQL image pull from filling ephemeral storage and getting the
+# pod evicted ("workspace unresponsive").
+attributes:
+  controller.devfile.io/storage-type: per-workspace
+  # Make the hostname "mysql" resolve to the workspace itself, so the %prod
+  # JDBC URL (jdbc:mysql://mysql:3306/fruitdb) used on OpenShift also works when
+  # running the runner jar in the terminal against a local Podman MySQL started
+  # with -p 3306:3306. Note: this shadows DNS for the short name "mysql" inside
+  # the workspace; use mysql.<namespace>.svc to reach a real cluster Service.
+  pod-overrides:
+    spec:
+      hostAliases:
+        - ip: 127.0.0.1
+          hostnames:
+            - mysql
+
+# Cloned automatically when the workspace is created from a raw devfile URL or the
+# Dev Spaces dashboard. Harmless when starting from a git-repo URL (Dev Spaces
+# clones that repo itself and ${PROJECT_SOURCE} resolves the same way).
+projects:
+  - name: fruit-database
+    git:
+      remotes:
+        origin: https://github.com/mostmark/fruit-database.git
+      checkoutFrom:
+        revision: main
+
+components:
+  - name: tools
+    container:
+      # Must be the udi-rhel9 3.25 tag or newer for nested-container run support.
+      # Pin this to match the Dev Spaces version installed on your cluster.
+      image: registry.redhat.io/devspaces/udi-rhel9:3.27
+
+      # Resource budget. The editor (che-code) runs in its OWN container with its
+      # own limits, so this only has to cover what runs HERE: the Maven JVM, the
+      # forked Quarkus dev JVM, and the nested MySQL container (whose RAM is charged
+      # to this container's cgroup). request<limit = Burstable; set request==limit
+      # if you want Guaranteed QoS and the strongest protection from node eviction.
+      memoryRequest: "4Gi"
+      memoryLimit: "8Gi"
+      cpuRequest: "1"
+      cpuLimit: "4"
+
+      env:
+        # JDK selection. Maven and Quarkus read the JDK from JAVA_HOME directly, so
+        # this alone makes dev mode build and run on Java 21 (PATH is handled below).
+        - name: JAVA_HOME
+          value: /usr/lib/jvm/java-21
+
+        # Point Testcontainers/Dev Services at the rootless Podman Docker-API socket
+        # (started/verified by the ensure-podman-socket helper below).
+        - name: DOCKER_HOST
+          value: unix:///tmp/podman.sock
+
+        # Ryuk (Testcontainers' reaper) wants a privileged container + socket mount,
+        # which the OpenShift SCC won't grant. Disable it; stray containers are cleaned
+        # up by clean dev-mode shutdown and by workspace recreation.
+        - name: TESTCONTAINERS_RYUK_DISABLED
+          value: "true"
+
+        # Skip Testcontainers' startup self-checks (notably the disk-space probe),
+        # which misread Podman's rootless storage layout. Does NOT affect container
+        # readiness/wait strategies.
+        - name: TESTCONTAINERS_CHECKS_DISABLE
+          value: "true"
+
+        # Fully-qualify the MySQL image so Podman never hits an interactive short-name
+        # registry prompt (Testcontainers can't answer it). Equivalent to setting
+        # quarkus.datasource.devservices.image-name in application.properties.
+        - name: QUARKUS_DATASOURCE_DEVSERVICES_IMAGE_NAME
+          value: docker.io/library/mysql:8.4
+
+        # Bound the Maven launcher JVM. The forked Quarkus dev JVM additionally takes
+        # its container-aware default (~25% of memoryLimit). Keep this consistent with
+        # the memoryLimit set above if you change it.
+        - name: MAVEN_OPTS
+          value: "-Xmx1g -Xss128m"
+
+      endpoints:
+        # App HTTP, exposed publicly via the Dev Spaces gateway (which terminates TLS);
+        # the app serves plain HTTP on 8080.
+        # IMPORTANT: this endpoint must NOT be named "quarkus-http" and must NOT be
+        # discoverable. A discoverable endpoint gets its own Service of the same name,
+        # and Kubernetes then injects QUARKUS_HTTP_PORT=tcp://<clusterIP>:8080 into the
+        # pod. SmallRye Config maps that env var onto quarkus.http.port, and the build
+        # (and runtime) then fail trying to parse "tcp://..." as an integer port.
+        - name: http-app
+          targetPort: 8080
+          exposure: public
+          protocol: http
+          attributes:
+            urlRewriteSupported: true
+        # JDWP debug port for attaching the IDE debugger to dev mode.
+        - name: quarkus-debug
+          targetPort: 5005
+          exposure: internal
+          protocol: tcp
+
+      volumeMounts:
+        # Maven local repository – persists downloaded dependencies across restarts.
+        - name: m2
+          path: /home/user/.m2
+        # Podman rootless graph storage – keeps pulled image layers on the PVC instead
+        # of ephemeral storage. If your PVC backend gives you storage-driver or
+        # permission errors here, remove this one volume + mount and Podman falls back
+        # to the container filesystem (then rely on the resource limits / a larger
+        # ephemeral-storage request).
+        - name: podman-storage
+          path: /home/user/.local/share/containers
+
+      # Mount the cloned project source into the container at ${PROJECT_SOURCE}.
+      mountSources: true
+
+  - name: m2
+    volume:
+      size: 10Gi
+
+  - name: podman-storage
+    volume:
+      size: 15Gi
+
+commands:
+  # Prepend $JAVA_HOME/bin to PATH for interactive terminals. This is done in a
+  # shell rc file rather than the container `env:` block on purpose: Kubernetes does
+  # NOT expand $PATH (or $(PATH)) against the image's existing PATH, so writing
+  # PATH: "$JAVA_HOME/bin:$PATH" in env would replace PATH with a broken literal and
+  # lose mvn/podman/etc. Appending the export to ~/.bashrc lets the shell expand
+  # $PATH correctly at terminal startup. Idempotent; safe to re-run every start.
+  - id: configure-java-path
+    exec:
+      component: tools
+      commandLine: |
+        grep -q 'devfile: java-21 on PATH' ~/.bashrc 2>/dev/null || cat >> ~/.bashrc <<'EOF'
+        # devfile: java-21 on PATH
+        export JAVA_HOME=/usr/lib/jvm/java-21
+        export PATH="$JAVA_HOME/bin:$HOME/bin:$PATH"
+        EOF
+
+  # Installs a helper script that starts the Podman socket ONLY if it is not already
+  # answering, then blocks until it responds to /_ping. Writing it to ~/bin (on the
+  # home PVC) rather than inlining it keeps the YAML readable and lets you run
+  # `ensure-podman-socket` by hand from any terminal.
+  #
+  # Why a script instead of relying on postStart alone: a backgrounded process
+  # started from a transient postStart exec session is not guaranteed to survive,
+  # and /tmp is ephemeral, so both the socket file and the process disappear on
+  # every workspace restart. Making this idempotent and calling it from the run
+  # commands means a missing socket self-heals instead of failing the build.
+  - id: install-podman-socket-helper
+    exec:
+      component: tools
+      commandLine: |
+        mkdir -p ~/bin && cat > ~/bin/ensure-podman-socket <<'EOF'
+        #!/usr/bin/env bash
+        # Idempotent: start the Docker-compatible Podman socket if it isn't up, then wait.
+        SOCK=/tmp/podman.sock
+        if ! curl -sf --unix-socket "$SOCK" http://d/_ping >/dev/null 2>&1; then
+          rm -f "$SOCK"
+          nohup podman system service --time=0 "unix://$SOCK" > /tmp/podman-service.log 2>&1 &
+        fi
+        for i in $(seq 1 30); do
+          curl -sf --unix-socket "$SOCK" http://d/_ping >/dev/null 2>&1 && exit 0
+          sleep 1
+        done
+        echo "ERROR: Podman socket at $SOCK did not become ready. See /tmp/podman-service.log" >&2
+        cat /tmp/podman-service.log >&2
+        exit 1
+        EOF
+        chmod +x ~/bin/ensure-podman-socket
+
+  # Pre-pull the Dev Services database image on first start, so the very first
+  # `mvn quarkus:dev` isn't competing with a large image pull. Non-fatal: a failure
+  # here (offline, bad tag) must not block the workspace from starting.
+  - id: prefetch-devservices-image
+    exec:
+      component: tools
+      commandLine: |
+        ~/bin/ensure-podman-socket || exit 0
+        podman image exists "$QUARKUS_DATASOURCE_DEVSERVICES_IMAGE_NAME" \
+          || podman pull "$QUARKUS_DATASOURCE_DEVSERVICES_IMAGE_NAME" \
+          || echo "WARN: could not pre-pull $QUARKUS_DATASOURCE_DEVSERVICES_IMAGE_NAME; Dev Services will pull it on demand."
+
+  # Run the app in Quarkus dev mode. Dev Services starts MySQL automatically.
+  # The socket is ensured (and waited for) first, so this works even if postStart
+  # was skipped, or the socket died since the workspace started.
+  # Binding to 0.0.0.0 lets the Dev Spaces route reach the app.
+  - id: dev
+    exec:
+      component: tools
+      commandLine: ~/bin/ensure-podman-socket && mvn quarkus:dev -Dquarkus.http.host=0.0.0.0
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: run
+        isDefault: true
+
+  # Package the application. Also ensures the socket: `mvn package` runs Quarkus
+  # tests/augmentation that can trigger Dev Services too.
+  - id: package
+    exec:
+      component: tools
+      commandLine: ~/bin/ensure-podman-socket && mvn -DskipTests package
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: build
+        isDefault: true
+
+events:
+  postStart:
+    - configure-java-path
+    - install-podman-socket-helper
+    - prefetch-devservices-image
