@@ -28,10 +28,10 @@ attributes:
 # Dev Spaces dashboard. Harmless when starting from a git-repo URL (Dev Spaces
 # clones that repo itself and ${PROJECT_SOURCE} resolves the same way).
 projects:
-  - name: fruit-database
+  - name: snacks-app
     git:
       remotes:
-        origin: https://github.com/mostmark/fruit-database.git
+        origin: https://github.com/bmeklund/snacks-app.git
       checkoutFrom:
         revision: main
 
