@@ -12,5 +12,11 @@
 		"workbench.preferredLightColorTheme": "Winter is Coming (Light)",
 		"editor.wordWrap": "on",
 		"files.autoSave": "on"
-	}
+	},
+	"folders": [
+		{
+			"name": "snacks-app",
+			"path": "/projects/snacks-app"
+		}
+	]
 }
