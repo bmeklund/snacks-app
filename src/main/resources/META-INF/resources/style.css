@@ -23,7 +23,7 @@
     flex: 1;
     min-height: 30rem;
     overflow: hidden;
-    background: linear-gradient(145deg, #3f0a67, #24062b);
+    background: linear-gradient(145deg, #330852, #19041f);
 }
 
 .floating-picture {
@@ -46,7 +46,12 @@
 
 .floating-picture--portrait {
     width: clamp(12rem, 42%, 18rem);
-    aspect-ratio: 723 / 1080;
+    aspect-ratio: 331 / 666;
+}
+
+.floating-picture--wide {
+    width: clamp(15rem, 58%, 24rem);
+    aspect-ratio: 480 / 251;
 }
 
 .picture:not(.is-animated) .floating-picture:nth-child(1) {
@@ -83,6 +88,12 @@
     bottom: 6%;
     left: auto;
     top: auto;
+}
+
+.picture:not(.is-animated) .floating-picture:nth-child(7) {
+    right: 6%;
+    top: 6%;
+    left: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
