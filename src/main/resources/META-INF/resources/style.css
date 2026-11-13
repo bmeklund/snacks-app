@@ -5,13 +5,106 @@
 }
 .flex-container {
     display: flex;
+    align-items: stretch;
 }
 .flex-child {
     flex: 1;
 }  
 .flex-child:first-child {
     margin-right: 1rem;
-} 
+}
+
+.motion-panel {
+    display: flex;
+}
+
+.picture {
+    position: relative;
+    flex: 1;
+    min-height: 30rem;
+    overflow: hidden;
+    background: linear-gradient(145deg, #3f0a67, #24062b);
+}
+
+.floating-picture {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: clamp(13.5rem, 54%, 22.5rem);
+    aspect-ratio: 1;
+    object-fit: contain;
+    filter: drop-shadow(0 0.6rem 0.75rem rgb(36 6 43 / 24%));
+    will-change: transform;
+    user-select: none;
+    pointer-events: none;
+}
+
+.floating-picture:nth-child(2),
+.floating-picture:nth-child(4) {
+    width: clamp(11.25rem, 47.25%, 20.25rem);
+}
+
+.floating-picture--portrait {
+    width: clamp(12rem, 42%, 18rem);
+    aspect-ratio: 723 / 1080;
+}
+
+.picture:not(.is-animated) .floating-picture:nth-child(1) {
+    top: 8%;
+    left: 8%;
+}
+
+.picture:not(.is-animated) .floating-picture:nth-child(2) {
+    top: 18%;
+    right: 8%;
+    left: auto;
+}
+
+.picture:not(.is-animated) .floating-picture:nth-child(3) {
+    bottom: 8%;
+    left: 18%;
+    top: auto;
+}
+
+.picture:not(.is-animated) .floating-picture:nth-child(4) {
+    right: 12%;
+    bottom: 12%;
+    left: auto;
+    top: auto;
+}
+
+.picture:not(.is-animated) .floating-picture:nth-child(5) {
+    top: 34%;
+    left: 34%;
+}
+
+.picture:not(.is-animated) .floating-picture:nth-child(6) {
+    right: 28%;
+    bottom: 6%;
+    left: auto;
+    top: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .floating-picture {
+        will-change: auto;
+    }
+}
+
+@media (max-width: 48rem) {
+    .flex-container {
+        flex-direction: column;
+    }
+
+    .flex-child:first-child {
+        margin-right: 0;
+        margin-bottom: 1rem;
+    }
+
+    .picture {
+        min-height: 24rem;
+    }
+}
 .h1-center {
     display: flex;
     justify-content: center;

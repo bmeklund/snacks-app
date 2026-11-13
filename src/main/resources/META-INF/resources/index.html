@@ -21,19 +21,6 @@
             font-family: 'Open Sans', serif;
         }
     </style>
-    <script type="text/javascript">
-      (function() {
-      
-      var img = document.getElementById('picture').firstChild;
-      img.onload = function() {
-          if(img.height > img.width) {
-              img.height = '100%';
-              img.width = 'auto';
-          }
-      };
-      
-      }());
-      </script>
     <!-- Load AngularJS -->
     <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
     <script type="text/javascript">
@@ -147,13 +134,93 @@
       </div>
       </div>
     </div>
-    <div class="flex-child">
-      <div class="picture">
-        <img src="plushie-zen.png" alt="podmanimg" style='display: block; width: 100%; height: auto; object-fit: contain' />
+    <div class="flex-child motion-panel">
+      <div class="picture" data-floating-stage aria-hidden="true">
+        <img class="floating-picture" src="images/3dobj-DevDragon-PurpleLit-L.Small_square_transparent.png" alt="" aria-hidden="true" />
+        <img class="floating-picture" src="images/3Dobj-Rubberduck-Purplelight-L.Small_square_transparent.png" alt="" aria-hidden="true" />
+        <img class="floating-picture" src="images/3Dobj-DevRocket-PurpleLit-S.png.Small_square_transparent.png" alt="" aria-hidden="true" />
+        <img class="floating-picture" src="images/3Dobj-Devcomputer-Purplelight-L.Small_square_transparent.png" alt="" aria-hidden="true" />
+        <img class="floating-picture" src="images/3dobj-DevSailingShip-PurpleLit-R.Small_square_transparent.png" alt="" aria-hidden="true" />
+        <img class="floating-picture floating-picture--portrait" src="images/Repo_Pose_07_YogaTree0000.Medium_square_transparent.png" alt="" aria-hidden="true" />
       </div>
     </div>
     
   </div>
 
+  <script type="text/javascript">
+    (function () {
+      var stage = document.querySelector('[data-floating-stage]');
+      var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (!stage || prefersReducedMotion) {
+        return;
+      }
+
+      stage.classList.add('is-animated');
+      var pictures = Array.prototype.slice.call(stage.querySelectorAll('.floating-picture'));
+      var lastFrame = performance.now();
+      var states = pictures.map(function (picture) {
+        var speed = 25 + Math.random() * 20;
+        var angle = Math.random() * Math.PI * 2;
+
+        return {
+          picture: picture,
+          x: Math.random() * Math.max(0, stage.clientWidth - picture.offsetWidth),
+          y: Math.random() * Math.max(0, stage.clientHeight - picture.offsetHeight),
+          velocityX: Math.cos(angle) * speed,
+          velocityY: Math.sin(angle) * speed,
+          rotation: Math.random() * 16 - 8,
+          rotationSpeed: Math.random() * 5 - 2.5,
+          nextTurn: lastFrame + 1200 + Math.random() * 2800
+        };
+      });
+
+      function turnRandomly(state, now) {
+        if (now < state.nextTurn) {
+          return;
+        }
+
+        var turn = (Math.random() - 0.5) * 0.8;
+        var cosine = Math.cos(turn);
+        var sine = Math.sin(turn);
+        var velocityX = state.velocityX;
+
+        state.velocityX = velocityX * cosine - state.velocityY * sine;
+        state.velocityY = velocityX * sine + state.velocityY * cosine;
+        state.nextTurn = now + 1200 + Math.random() * 2800;
+      }
+
+      function animate(now) {
+        var elapsedSeconds = Math.min((now - lastFrame) / 1000, 0.05);
+        lastFrame = now;
+
+        states.forEach(function (state) {
+          var maxX = Math.max(0, stage.clientWidth - state.picture.offsetWidth);
+          var maxY = Math.max(0, stage.clientHeight - state.picture.offsetHeight);
+
+          turnRandomly(state, now);
+          state.x += state.velocityX * elapsedSeconds;
+          state.y += state.velocityY * elapsedSeconds;
+          state.rotation += state.rotationSpeed * elapsedSeconds;
+
+          if (state.x <= 0 || state.x >= maxX) {
+            state.x = Math.max(0, Math.min(state.x, maxX));
+            state.velocityX *= -1;
+          }
+
+          if (state.y <= 0 || state.y >= maxY) {
+            state.y = Math.max(0, Math.min(state.y, maxY));
+            state.velocityY *= -1;
+          }
+
+          state.picture.style.transform = 'translate3d(' + state.x + 'px, ' + state.y + 'px, 0) rotate(' + state.rotation + 'deg)';
+        });
+
+        window.requestAnimationFrame(animate);
+      }
+
+      window.requestAnimationFrame(animate);
+    }());
+  </script>
 </body>
 </html>
